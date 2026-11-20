@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="management-token" content="__TOKEN__">
+  <title>数据库连接管理</title>
+  <link rel="stylesheet" href="/style.css">
+  <script src="/app.js" type="module"></script>
+</head>
+<body>
+  <main>
+    <header><h1>数据库连接管理</h1></header>
+    <div class="layout">
+      <section aria-labelledby="connections-title">
+        <div class="heading"><h2 id="connections-title">连接列表</h2><button id="new" type="button">新增连接</button></div>
+        <div id="connections"></div>
+      </section>
+      <section aria-labelledby="form-title">
+        <h2 id="form-title">新增连接</h2>
+        <form>
+          <label>连接名称<input name="name" maxlength="100" required placeholder="例如：订单库"></label>
+          <label>数据库类型<select name="type"><option value="mysql">MySQL</option><option value="postgres">PostgreSQL</option></select></label>
+          <label>主机<input name="host" value="127.0.0.1" required></label>
+          <label>端口<input name="port" type="number" min="1" max="65535" value="3306" required></label>
+          <label>数据库<input name="database" required></label>
+          <label>用户名<input name="user" required></label>
+          <label class="wide">密码<input name="password" type="password" autocomplete="new-password" aria-describedby="password-hint"><small id="password-hint"></small></label>
+          <label id="clear-label" class="wide checkbox" hidden><input name="clearPassword" type="checkbox">清除已保存的密码</label>
+          <label class="wide">表白名单<input name="allowedTables" placeholder="orders, customers" aria-describedby="table-hint"><small id="table-hint">逗号分隔，仅用于列出表和查看字段。SQL 访问权限由数据库账号控制。</small></label>
+          <label>最大返回行数<input name="maxRows" type="number" min="1" max="10000" value="100" required></label>
+          <label>连接池大小<input name="poolSize" type="number" min="1" max="50" value="5" required></label>
+          <label>超时（毫秒）<input name="timeout" type="number" min="100" max="120000" value="10000" required></label>
+          <div class="wide actions"><button id="test" type="button">测试连接</button><button class="primary" type="submit">保存</button></div>
+        </form>
+      </section>
+    </div>
+    <section class="tokens" aria-labelledby="tokens-title">
+      <h2 id="tokens-title">MCP 访问令牌</h2>
+      <form id="token-form">
+        <label>令牌名称<input name="name" required maxlength="100" placeholder="例如：查询客户端"></label>
+        <div class="actions"><button class="primary" type="submit">创建令牌</button></div>
+      </form>
+      <label id="new-token" hidden>复制令牌。明文仅在创建时显示。
+        <input id="token-secret" readonly autocomplete="off" spellcheck="false">
+      </label>
+      <div id="tokens"></div>
+    </section>
+    <p id="status" role="status" aria-live="polite"></p>
+  </main>
+</body>
+</html>

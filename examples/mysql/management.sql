@@ -1,0 +1,35 @@
+CREATE DATABASE IF NOT EXISTS libra_mcp CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+USE libra_mcp;
+
+CREATE TABLE IF NOT EXISTS libra_mcp_connections (
+  id CHAR(36) PRIMARY KEY,
+  name VARCHAR(100) NOT NULL,
+  db_type ENUM('mysql', 'postgres') NOT NULL,
+  host VARCHAR(255) NOT NULL,
+  port INT NOT NULL,
+  database_name VARCHAR(255) NOT NULL,
+  username VARCHAR(255) NOT NULL,
+  encrypted_password TEXT NOT NULL,
+  allowed_tables JSON NOT NULL,
+  max_rows INT NOT NULL DEFAULT 100,
+  pool_size INT NOT NULL DEFAULT 5,
+  timeout_ms INT NOT NULL DEFAULT 10000,
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS libra_mcp_tokens (
+  id CHAR(36) PRIMARY KEY,
+  name VARCHAR(100) NOT NULL,
+  token_hash CHAR(64) NOT NULL UNIQUE,
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS libra_mcp_settings (
+  setting_key VARCHAR(100) PRIMARY KEY,
+  setting_value TEXT NOT NULL,
+  updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
+
+CREATE USER IF NOT EXISTS 'libra_mcp_admin'@'%' IDENTIFIED BY 'change-me';
+GRANT SELECT, INSERT, UPDATE, DELETE ON libra_mcp.* TO 'libra_mcp_admin'@'%';
