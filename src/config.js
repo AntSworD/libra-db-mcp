@@ -104,7 +104,7 @@ async function decrypt(value) {
 export async function loadStore() {
   if (useManagementDatabase()) {
     const pool = await getManagementPool();
-    const [connections] = await pool.query('SELECT id, name, db_type AS type, host, port, database_name AS database, username AS user, encrypted_password AS password, allowed_tables AS allowedTables, max_rows AS maxRows, pool_size AS poolSize, timeout_ms AS timeout FROM libra_mcp_connections ORDER BY name');
+    const [connections] = await pool.query('SELECT id, name, db_type AS `type`, host, port, database_name AS `database`, username AS `user`, encrypted_password AS `password`, allowed_tables AS allowedTables, max_rows AS maxRows, pool_size AS poolSize, timeout_ms AS `timeout` FROM libra_mcp_connections ORDER BY name');
     const [tokens] = await pool.query('SELECT id, name, token_hash AS hash, created_at AS createdAt FROM libra_mcp_tokens ORDER BY created_at');
     const [settings] = await pool.query('SELECT setting_key, setting_value FROM libra_mcp_settings');
     const values = Object.fromEntries(settings.map((item) => [item.setting_key, item.setting_value]));

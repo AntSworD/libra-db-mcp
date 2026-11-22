@@ -105,15 +105,25 @@ const server = createServer(async (request, response) => {
     }
     if (request.method === 'POST' && url.pathname === '/api/test') {
       const input = await body(request);
-      const store = await loadStore();
-      const existing = input.id ? store.connections.find((item) => item.id === input.id) : undefined;
-      if (input.id && !existing) throw new Error('连接不存在');
-      const config = await parseConnection(input, existing);
-      const db = await createDatabase(config);
+      let stage = 'loadStore';
       try {
-        await db.query('SELECT 1 AS ok');
+        const store = await loadStore();
+        const existing = input.id ? store.connections.find((item) => item.id === input.id) : undefined;
+        stage = 'parseConnection';
+        if (input.id && !existing) throw new Error('连接不存在');
+        const config = await parseConnection(input, existing);
+        stage = 'testDatabase';
+        const db = await createDatabase(config);
+        try {
+          await db.query('SELECT 1 AS ok');
+        } finally { await db.end(); }
         return json(response, 200, { message: '连接成功' });
-      } finally { await db.end(); }
+      } catch (error) {
+        const code = typeof error.code === 'string' && /^[A-Z0-9_]{1,64}$/.test(error.code)
+          ? error.code : null;
+        console.warn('Database connection test failed', JSON.stringify({ stage, code }));
+        throw error;
+      }
     }
     if (request.method === 'POST' && url.pathname === '/api/connections') {
       const input = await body(request);
