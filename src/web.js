@@ -58,6 +58,10 @@ const server = createServer(async (request, response) => {
     const localHost = origins.has(`http://${host}`);
     if ((!localHost && !(url.pathname === '/mcp' && mcpHosts.has(host)))
         || (request.headers.origin && !origins.has(request.headers.origin))) {
+      console.warn('Host or Origin is not allowed', JSON.stringify({
+        host: request.headers.host ?? null,
+        origin: request.headers.origin ?? null,
+      }));
       return json(response, 403, { error: 'Host or Origin is not allowed' });
     }
     if (url.pathname === '/mcp') {

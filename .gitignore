@@ -2,3 +2,7 @@ node_modules/
 .env
 data/
 *.log
+
+# Ignore local deployment manifests and keep the public Compose example.
+/deploy/*
+!/deploy/compose.yaml
