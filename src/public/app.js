@@ -3,6 +3,7 @@ const tokenForm = document.querySelector('#token-form');
 const tokenList = document.querySelector('#tokens');
 const newToken = document.querySelector('#new-token');
 const tokenSecret = document.querySelector('#token-secret');
+const tokenAgentGuide = document.querySelector('#token-agent-guide');
 const fields = form.elements;
 const list = document.querySelector('#connections');
 const status = document.querySelector('#status');
@@ -151,6 +152,7 @@ function renderTokens(tokens) {
       run(async () => {
         renderTokens(await api(`/tokens/${token.id}`, 'DELETE'));
         tokenSecret.value = '';
+        tokenAgentGuide.value = '';
         newToken.hidden = true;
         return '令牌已撤销。';
       });
@@ -165,6 +167,8 @@ tokenForm.addEventListener('submit', (event) => {
   run(async () => {
     const created = await api('/tokens', 'POST', { name });
     tokenSecret.value = created.secret;
+    const mcpUrl = new URL('/mcp', window.location.origin);
+    tokenAgentGuide.value = `请添加名为 libra-db-mcp 的远程 MCP 服务，使用 Streamable HTTP 连接 ${mcpUrl}，设置请求头 Authorization: Bearer ${created.secret}，并验证能否列出工具。`;
     newToken.hidden = false;
     tokenForm.reset();
     renderTokens(await api('/tokens'));
