@@ -127,7 +127,7 @@ async function saveStore(store) {
       await connection.query('DELETE FROM libra_mcp_connections');
       for (const item of store.connections) await connection.query('INSERT INTO libra_mcp_connections (id,name,db_type,host,port,database_name,username,encrypted_password,allowed_tables,max_rows,pool_size,timeout_ms) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)', [item.id, item.name, item.type, item.host, item.port, item.database, item.user, item.password, JSON.stringify(item.allowedTables), item.maxRows, item.poolSize, item.timeout]);
       await connection.query('DELETE FROM libra_mcp_tokens');
-      for (const item of store.tokens ?? []) await connection.query('INSERT INTO libra_mcp_tokens (id,name,token_hash,created_at) VALUES (?,?,?,?)', [item.id, item.name, item.hash, item.createdAt]);
+      for (const item of store.tokens ?? []) await connection.query('INSERT INTO libra_mcp_tokens (id,name,token_hash,created_at) VALUES (?,?,?,?)', [item.id, item.name, item.hash, new Date(item.createdAt)]);
       await connection.query('INSERT INTO libra_mcp_settings (setting_key,setting_value) VALUES (\'activeId\',?) ON DUPLICATE KEY UPDATE setting_value=VALUES(setting_value)', [store.activeId || '']);
       await connection.commit();
     } catch (error) { await connection.rollback(); throw error; } finally { connection.release(); }
