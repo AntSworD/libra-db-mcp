@@ -105,7 +105,10 @@ export async function loadStore() {
   if (useManagementDatabase()) {
     const pool = await getManagementPool();
     const [connections] = await pool.query('SELECT id, name, db_type AS `type`, host, port, database_name AS `database`, username AS `user`, encrypted_password AS `password`, allowed_tables AS allowedTables, max_rows AS maxRows, pool_size AS poolSize, timeout_ms AS `timeout` FROM libra_mcp_connections ORDER BY name');
-    const [tokens] = await pool.query('SELECT id, name, token_hash AS hash, created_at AS createdAt FROM libra_mcp_tokens ORDER BY created_at');
+    const [tokens] = await pool.query('SELECT id, name, token_hash AS hash, created_at AS createdAt, connection_ids AS connectionIds FROM libra_mcp_tokens ORDER BY created_at');
+    for (const token of tokens) {
+      if (typeof token.connectionIds === 'string') token.connectionIds = JSON.parse(token.connectionIds);
+    }
     const [settings] = await pool.query('SELECT setting_key, setting_value FROM libra_mcp_settings');
     const values = Object.fromEntries(settings.map((item) => [item.setting_key, item.setting_value]));
     return { activeId: values.activeId || null, connections: connections.map((item) => ({ ...item, allowedTables: typeof item.allowedTables === 'string' ? JSON.parse(item.allowedTables) : item.allowedTables })), tokens };
@@ -127,7 +130,7 @@ async function saveStore(store) {
       await connection.query('DELETE FROM libra_mcp_connections');
       for (const item of store.connections) await connection.query('INSERT INTO libra_mcp_connections (id,name,db_type,host,port,database_name,username,encrypted_password,allowed_tables,max_rows,pool_size,timeout_ms) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)', [item.id, item.name, item.type, item.host, item.port, item.database, item.user, item.password, JSON.stringify(item.allowedTables), item.maxRows, item.poolSize, item.timeout]);
       await connection.query('DELETE FROM libra_mcp_tokens');
-      for (const item of store.tokens ?? []) await connection.query('INSERT INTO libra_mcp_tokens (id,name,token_hash,created_at) VALUES (?,?,?,?)', [item.id, item.name, item.hash, new Date(item.createdAt)]);
+      for (const item of store.tokens ?? []) await connection.query('INSERT INTO libra_mcp_tokens (id,name,token_hash,created_at,connection_ids) VALUES (?,?,?,?,?)', [item.id, item.name, item.hash, new Date(item.createdAt), JSON.stringify(item.connectionIds ?? [])]);
       await connection.query('INSERT INTO libra_mcp_settings (setting_key,setting_value) VALUES (\'activeId\',?) ON DUPLICATE KEY UPDATE setting_value=VALUES(setting_value)', [store.activeId || '']);
       await connection.commit();
     } catch (error) { await connection.rollback(); throw error; } finally { connection.release(); }
@@ -186,7 +189,16 @@ function tokenHash(token) {
 
 export async function listTokens() {
   const store = await loadStore();
-  return (store.tokens ?? []).map(({ hash, ...metadata }) => metadata);
+  return (store.tokens ?? []).map(({ id, name, createdAt, connectionIds }) => ({
+    id, name, createdAt, connectionIds: connectionIds ?? [],
+  }));
+}
+
+function parseConnectionIds(store, input) {
+  const ids = [...new Set(z.array(z.string().uuid()).parse(input))];
+  const existingIds = new Set(store.connections.map(({ id }) => id));
+  if (ids.some((id) => !existingIds.has(id))) throw new Error('连接不存在');
+  return ids;
 }
 
 export async function createToken(input) {
@@ -194,9 +206,18 @@ export async function createToken(input) {
   const secret = `dbmcp_${randomBytes(32).toString('base64url')}`;
   const metadata = { id: randomUUID(), name, createdAt: new Date().toISOString() };
   await editStore((store) => {
+    metadata.connectionIds = parseConnectionIds(store, input.connectionIds ?? []);
     (store.tokens ??= []).push({ ...metadata, hash: tokenHash(secret) });
   });
   return { ...metadata, secret };
+}
+
+export async function updateTokenConnections(id, input) {
+  await editStore((store) => {
+    const token = (store.tokens ?? []).find((entry) => entry.id === id);
+    if (!token) throw new Error('访问令牌不存在');
+    token.connectionIds = parseConnectionIds(store, input?.connectionIds);
+  });
 }
 
 export async function revokeToken(id) {
@@ -207,31 +228,23 @@ export async function revokeToken(id) {
 
 export async function authorizeMcp(header) {
   const match = /^Bearer (dbmcp_[A-Za-z0-9_-]{43})$/i.exec(header ?? '');
-  if (!match) return false;
+  if (!match) return null;
   const hash = tokenHash(match[1]);
   const store = await loadStore();
-  return (store.tokens ?? []).some((entry) => entry.hash === hash);
-}
-
-export async function activeConnection() {
-  const store = await loadStore();
-  if (store.activeId) {
-    const connection = store.connections.find((item) => item.id === store.activeId);
-    if (!connection) throw new Error('当前连接不存在，请在 Web 页面重新选择');
-    return { ...connection, password: await decrypt(connection.password) };
-  }
-  const type = (process.env.DB_TYPE || 'postgres').toLowerCase().replace('postgresql', 'postgres');
-  return schema.parse({
-    name: '环境变量配置',
-    type,
-    host: process.env.DB_HOST || '127.0.0.1',
-    port: process.env.DB_PORT || (type === 'mysql' ? 3306 : 5432),
-    database: process.env.DB_NAME,
-    user: process.env.DB_USER,
-    password: process.env.DB_PASSWORD || '',
-    allowedTables: (process.env.DB_ALLOWED_TABLES || '').split(',').map((name) => name.trim()).filter(Boolean),
-    maxRows: process.env.DB_MAX_ROWS || 100,
-    poolSize: process.env.DB_POOL_SIZE || 5,
-    timeout: process.env.DB_STATEMENT_TIMEOUT_MS || 10000,
-  });
+  const token = (store.tokens ?? []).find((entry) => entry.hash === hash);
+  if (!token) return null;
+  const ids = new Set(Array.isArray(token.connectionIds) ? token.connectionIds : []);
+  const connections = store.connections.filter(({ id }) => ids.has(id));
+  return {
+    connections: connections.map(({ id, name, type, database }) => ({ id, name, type, database })),
+    async resolveConnection(connectionId) {
+      if (connectionId === undefined && connections.length > 1) {
+        throw new Error('Specify connectionId using db_list_connections');
+      }
+      const connection = connectionId === undefined ? connections[0]
+        : connections.find(({ id }) => id === connectionId);
+      if (!connection) throw new Error('Database connection is not authorized');
+      return { ...connection, password: await decrypt(connection.password) };
+    },
+  };
 }

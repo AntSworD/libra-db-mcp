@@ -22,6 +22,7 @@ CREATE TABLE IF NOT EXISTS libra_mcp_tokens (
   id CHAR(36) PRIMARY KEY,
   name VARCHAR(100) NOT NULL,
   token_hash CHAR(64) NOT NULL UNIQUE,
+  connection_ids JSON NULL,
   created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 

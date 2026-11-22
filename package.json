@@ -9,7 +9,9 @@
     ".env.example",
     "Dockerfile",
     "deploy/compose.yaml",
-    "examples/mysql/init.sql"
+    "examples/mysql/init.sql",
+    "examples/mysql/management.sql",
+    "examples/mysql/migrate-token-connections.sql"
   ],
   "scripts": {
     "start": "node src/web.js",

@@ -6,6 +6,7 @@
   <meta name="management-token" content="__TOKEN__">
   <title>数据库连接管理</title>
   <link rel="stylesheet" href="/style.css">
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
   <script src="/app.js" type="module"></script>
 </head>
 <body>
@@ -13,45 +14,59 @@
     <header><h1>数据库连接管理</h1></header>
     <div class="layout">
       <section aria-labelledby="connections-title">
-        <div class="heading"><h2 id="connections-title">连接列表</h2><button id="new" type="button">新增连接</button></div>
+        <div class="heading"><h2 id="connections-title">数据库连接</h2><button id="new" class="primary" type="button">新增连接</button></div>
         <div id="connections"></div>
       </section>
-      <section aria-labelledby="form-title">
+      <section aria-labelledby="tokens-title">
+        <div class="heading"><h2 id="tokens-title">MCP 访问令牌</h2><button id="create-token" class="primary" type="button">创建令牌</button></div>
+        <div id="tokens"></div>
+      </section>
+    </div>
+    <p id="status" role="status" aria-live="polite"></p>
+    <dialog id="connection-dialog" aria-labelledby="form-title">
         <h2 id="form-title">新增连接</h2>
-        <form>
-          <label>连接名称<input name="name" maxlength="100" required placeholder="例如：订单库"></label>
+        <form id="connection-form" autocomplete="off">
+          <label>连接名称<input name="name" maxlength="100" required placeholder="例如：订单库" autocomplete="off" data-1p-ignore data-lpignore="true" data-bwignore></label>
           <label>数据库类型<select name="type"><option value="mysql">MySQL</option><option value="postgres">PostgreSQL</option></select></label>
           <label>主机<input name="host" value="127.0.0.1" required></label>
           <label>端口<input name="port" type="number" min="1" max="65535" value="3306" required></label>
           <label>数据库<input name="database" required></label>
-          <label>用户名<input name="user" required></label>
-          <label class="wide">密码<input name="password" type="password" autocomplete="new-password" aria-describedby="password-hint"><small id="password-hint"></small></label>
+          <label>用户名<input name="user" required autocomplete="off" data-1p-ignore data-lpignore="true" data-bwignore></label>
+          <label class="wide">密码<input name="password" type="password" autocomplete="new-password" data-1p-ignore data-lpignore="true" data-bwignore aria-describedby="password-hint"><small id="password-hint"></small></label>
           <label id="clear-label" class="wide checkbox" hidden><input name="clearPassword" type="checkbox">清除已保存的密码</label>
           <label class="wide">表白名单<input name="allowedTables" placeholder="orders, customers" aria-describedby="table-hint"><small id="table-hint">逗号分隔，仅用于列出表和查看字段。SQL 访问权限由数据库账号控制。</small></label>
+          <details id="advanced-settings" class="wide"><summary>高级设置</summary><div class="form-grid">
           <label>最大返回行数<input name="maxRows" type="number" min="1" max="10000" value="100" required></label>
           <label>连接池大小<input name="poolSize" type="number" min="1" max="50" value="5" required></label>
           <label>超时（毫秒）<input name="timeout" type="number" min="100" max="120000" value="10000" required></label>
-          <div class="wide actions"><button id="test" type="button">测试连接</button><button class="primary" type="submit">保存</button></div>
+          </div></details>
+          <div class="wide dialog-footer">
+            <p role="status" aria-live="polite"></p>
+            <div class="actions"><button data-close type="button">取消</button><button id="test" type="button">测试连接</button><button class="primary" type="submit">保存连接</button></div>
+          </div>
         </form>
-      </section>
-    </div>
-    <section class="tokens" aria-labelledby="tokens-title">
-      <h2 id="tokens-title">MCP 访问令牌</h2>
+    </dialog>
+    <dialog id="token-dialog" aria-labelledby="token-dialog-title">
+      <h2 id="token-dialog-title">创建令牌</h2>
       <form id="token-form">
-        <label>令牌名称<input name="name" required maxlength="100" placeholder="例如：查询客户端"></label>
-        <div class="actions"><button class="primary" type="submit">创建令牌</button></div>
+        <label class="wide">令牌名称<input name="name" required maxlength="100" placeholder="例如：查询客户端"></label>
+        <fieldset id="token-connections" class="wide connection-choices"><legend>允许访问的数据库连接</legend></fieldset>
       </form>
       <div id="new-token" hidden>
-        <label>复制令牌。明文仅在创建时显示。
+        <div class="copy-block">
+          <div class="heading"><label for="token-secret">令牌（明文仅显示一次）</label><button type="button" data-copy="token-secret" aria-label="复制令牌">复制</button></div>
           <input id="token-secret" readonly autocomplete="off" spellcheck="false">
-        </label>
-        <label>复制以下指引给 AI Agent
-          <textarea id="token-agent-guide" rows="4" readonly spellcheck="false"></textarea>
-        </label>
+        </div>
+        <div class="copy-block">
+          <div class="heading"><label for="token-agent-guide">AI Agent 配置指引</label><button type="button" data-copy="token-agent-guide" aria-label="复制 AI Agent 配置指引">复制</button></div>
+          <textarea id="token-agent-guide" rows="5" readonly spellcheck="false"></textarea>
+        </div>
       </div>
-      <div id="tokens"></div>
-    </section>
-    <p id="status" role="status" aria-live="polite"></p>
+      <div class="dialog-footer">
+        <p role="status" aria-live="polite"></p>
+        <div class="actions"><button data-close type="button">取消</button><button class="primary" type="submit" form="token-form">创建令牌</button></div>
+      </div>
+    </dialog>
   </main>
 </body>
 </html>

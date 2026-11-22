@@ -1,7 +1,7 @@
 import { createServer } from 'node:http';
 import { createHash, randomBytes, timingSafeEqual } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
-import { loadStore, publicStore, editStore, saveConnection, parseConnection, listTokens, createToken, revokeToken, authorizeMcp, managementPassword } from './config.js';
+import { loadStore, publicStore, editStore, saveConnection, parseConnection, listTokens, createToken, updateTokenConnections, revokeToken, authorizeMcp, managementPassword } from './config.js';
 import { createDatabase } from './database.js';
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
 import { createMcpServer } from './index.js';
@@ -65,12 +65,13 @@ const server = createServer(async (request, response) => {
       return json(response, 403, { error: 'Host or Origin is not allowed' });
     }
     if (url.pathname === '/mcp') {
-      if (!await authorizeMcp(request.headers.authorization)) {
+      const authorization = await authorizeMcp(request.headers.authorization);
+      if (!authorization) {
         response.setHeader('WWW-Authenticate', 'Bearer');
         return json(response, 401, { error: 'Invalid or missing MCP token' });
       }
       const transport = new StreamableHTTPServerTransport({ enableJsonResponse: true });
-      const mcp = createMcpServer();
+      const mcp = createMcpServer(authorization);
       response.once('close', () => { void mcp.close().catch(() => {}); });
       await mcp.connect(transport);
       return await transport.handleRequest(request, response);
@@ -79,8 +80,13 @@ const server = createServer(async (request, response) => {
       response.setHeader('WWW-Authenticate', 'Basic realm="Database MCP Admin", charset="UTF-8"');
       return json(response, 401, { error: '请输入管理账号和密码' });
     }
-    if (request.method === 'GET' && ['/', '/app.js', '/style.css'].includes(url.pathname)) {
-      const files = { '/': ['index.html', 'text/html'], '/app.js': ['app.js', 'text/javascript'], '/style.css': ['style.css', 'text/css'] };
+    if (request.method === 'GET' && ['/', '/app.js', '/style.css', '/favicon.svg'].includes(url.pathname)) {
+      const files = {
+        '/': ['index.html', 'text/html'],
+        '/app.js': ['app.js', 'text/javascript'],
+        '/style.css': ['style.css', 'text/css'],
+        '/favicon.svg': ['favicon.svg', 'image/svg+xml'],
+      };
       const [file, type] = files[url.pathname];
       let content = await readFile(new URL(`./public/${file}`, import.meta.url), 'utf8');
       if (file === 'index.html') content = content.replace('__TOKEN__', token);
@@ -96,6 +102,10 @@ const server = createServer(async (request, response) => {
       if (request.method === 'POST') return json(response, 201, await createToken(await body(request)));
     }
     const tokenMatch = /^\/api\/tokens\/([a-f0-9-]+)$/.exec(url.pathname);
+    if (request.method === 'PUT' && tokenMatch) {
+      await updateTokenConnections(tokenMatch[1], await body(request));
+      return json(response, 200, await listTokens());
+    }
     if (request.method === 'DELETE' && tokenMatch) {
       await revokeToken(tokenMatch[1]);
       return json(response, 200, await listTokens());
@@ -144,9 +154,12 @@ const server = createServer(async (request, response) => {
       }
       if (request.method === 'DELETE' && !activate) {
         return json(response, 200, await editStore((store) => {
-          if (store.activeId === id) throw new Error('请先启用其他连接，再删除当前连接');
           if (!store.connections.some((item) => item.id === id)) throw new Error('连接不存在');
+          if (store.activeId === id) store.activeId = null;
           store.connections = store.connections.filter((item) => item.id !== id);
+          for (const token of store.tokens ?? []) {
+            token.connectionIds = (token.connectionIds ?? []).filter((connectionId) => connectionId !== id);
+          }
         }));
       }
     }
@@ -155,7 +168,7 @@ const server = createServer(async (request, response) => {
     if (response.headersSent) return response.end();
     // Never return driver error messages, which can contain connection credentials.
     const message = error.name === 'ZodError' ? '配置格式不正确，请检查必填项、端口和数值范围'
-      : ['连接不存在', '请先启用其他连接，再删除当前连接', '请求内容过大', '请使用 JSON 请求'].includes(error.message)
+      : ['连接不存在', '访问令牌不存在', '请求内容过大', '请使用 JSON 请求'].includes(error.message)
         ? error.message : '操作失败，请检查连接信息、数据库可达性和本地配置文件';
     json(response, 400, { error: message });
   }
