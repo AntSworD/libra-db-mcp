@@ -1,5 +1,7 @@
 # Libra DB MCP <img src="src/public/favicon.svg" alt="" width="24" height="24">
 
+中文 · [English](README.en.md)
+
 通过 Streamable HTTP 为 MCP 客户端提供 MySQL 和 PostgreSQL 查询能力。Web 管理页用于管理数据库连接、签发访问令牌，以及为每个令牌分配可访问的连接。
 
 ## 本地启动
