@@ -48,8 +48,8 @@
     </dialog>
     <dialog id="token-dialog" aria-labelledby="token-dialog-title">
       <h2 id="token-dialog-title">创建令牌</h2>
-      <form id="token-form">
-        <label class="wide">令牌名称<input name="name" required maxlength="100" placeholder="例如：查询客户端"></label>
+      <form id="token-form" autocomplete="off">
+        <label class="wide">令牌名称<input name="name" required maxlength="100" placeholder="例如：查询客户端" autocomplete="off" data-1p-ignore data-lpignore="true" data-bwignore></label>
         <fieldset id="token-connections" class="wide connection-choices"><legend>允许访问的数据库连接</legend></fieldset>
       </form>
       <div id="new-token" hidden>
