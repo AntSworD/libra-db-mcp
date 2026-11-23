@@ -12,6 +12,7 @@ CREATE TABLE IF NOT EXISTS libra_mcp_connections (
   encrypted_password TEXT NOT NULL,
   allowed_tables JSON NOT NULL,
   max_rows INT NOT NULL DEFAULT 100,
+  max_result_bytes INT NOT NULL DEFAULT 5242880,
   pool_size INT NOT NULL DEFAULT 5,
   timeout_ms INT NOT NULL DEFAULT 10000,
   created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,

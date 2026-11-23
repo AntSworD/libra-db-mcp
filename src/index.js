@@ -9,6 +9,7 @@ async function withDatabase(config, action) {
       ...db,
       databaseType: config.type,
       maxRows: config.maxRows,
+       maxResultBytes: config.maxResultBytes ?? 5 * 1024 * 1024,
       allowedTables: new Set(config.allowedTables.map((name) => name.toLowerCase())),
     });
   } finally {
@@ -39,6 +40,14 @@ function validateReadOnlySql(sql) {
     throw new Error('Read-only SQL is required');
   }
   return cleaned;
+}
+
+function validateQueryTables(sql, allowedTables) {
+  if (allowedTables.size === 0) return;
+  const references = [...sql.matchAll(/\b(?:from|join)\s+([a-z_][a-z0-9_]*(?:\.[a-z_][a-z0-9_]*)?)/gi)]
+    .map((match) => match[1].split('.').pop().toLowerCase());
+  const denied = [...new Set(references.filter((name) => !allowedTables.has(name)))];
+  if (denied.length) throw new Error(`Table is not allowed: ${denied.join(', ')}`);
 }
 
 export function createMcpServer({ connections, resolveConnection }) {
@@ -83,10 +92,13 @@ server.tool(
   'db_query_readonly',
   'Execute one read-only SELECT/WITH query with the configured row limit.',
   { sql: z.string().min(1), connectionId },
-  ({ sql, connectionId }) => onConnection(connectionId, async ({ query, maxRows }) => {
+  ({ sql, connectionId }) => onConnection(connectionId, async ({ query, maxRows, maxResultBytes, allowedTables }) => {
     const safeSql = validateReadOnlySql(sql);
-    const limitedSql = `${safeSql} LIMIT ${maxRows}`;
+    validateQueryTables(safeSql, allowedTables);
+    const limitedSql = `SELECT * FROM (${safeSql}) AS _mcp_result LIMIT ${maxRows}`;
     const rows = await query(limitedSql);
+    const resultBytes = Buffer.byteLength(JSON.stringify(rows), 'utf8');
+    if (resultBytes > maxResultBytes) throw new Error(`Query result exceeds the ${maxResultBytes} byte limit`);
     return { content: [{ type: 'text', text: JSON.stringify(rows) }] };
   }),
 );

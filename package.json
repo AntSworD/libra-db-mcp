@@ -11,7 +11,8 @@
     "deploy/compose.yaml",
     "examples/mysql/init.sql",
     "examples/mysql/management.sql",
-    "examples/mysql/migrate-token-connections.sql"
+    "examples/mysql/migrate-token-connections.sql",
+    "examples/mysql/migrate-result-limits.sql"
   ],
   "scripts": {
     "start": "node src/web.js",

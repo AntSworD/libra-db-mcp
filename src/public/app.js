@@ -56,7 +56,7 @@ function select(connection) {
   document.querySelector('#password-hint').textContent = connection?.hasPassword ? '留空保留现有密码。' : '';
   fields.password.disabled = false;
   if (!connection) return;
-  for (const name of ['name', 'type', 'host', 'port', 'database', 'user', 'maxRows', 'poolSize', 'timeout']) {
+  for (const name of ['name', 'type', 'host', 'port', 'database', 'user', 'maxRows', 'maxResultBytes', 'poolSize', 'timeout']) {
     fields[name].value = connection[name];
   }
   fields.allowedTables.value = connection.allowedTables.join(', ');

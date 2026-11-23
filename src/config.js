@@ -67,6 +67,7 @@ const schema = z.object({
   password: z.string().max(4096).optional(),
   allowedTables: z.array(z.string().trim().regex(/^[A-Za-z_][A-Za-z0-9_]*$/)).max(1000).default([]),
   maxRows: z.coerce.number().int().min(1).max(10000).default(100),
+  maxResultBytes: z.coerce.number().int().min(1024).max(50 * 1024 * 1024).default(5 * 1024 * 1024),
   poolSize: z.coerce.number().int().min(1).max(50).default(5),
   timeout: z.coerce.number().int().min(100).max(120000).default(10000),
 });
